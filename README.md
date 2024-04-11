@@ -2,6 +2,12 @@
 
 Python script to extract/update internal regdb and remove regdomain in ath10k/ath11k BDF files.
 
+## Regdb
+
+Board files with actual regdb can be found on this repository: https://git.codelinaro.org/clo/qsdk/oss/ath11k-bdf/-/tree/NHSS.QSDK.12.4.5
+
+They must be extracted first using `ath11k-bdencoder`: https://github.com/qca/qca-swiss-army-knife
+
 ## Usage
 
 ### ath10k BDF tool
