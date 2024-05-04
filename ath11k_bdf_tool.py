@@ -41,15 +41,15 @@ CHECKSUM_ADDR = 0xa
 
 BDF_HEADER = '010004040000'
 
-REGDB_HEADER = '000004003700'
+REGDB_HEADER = '0000000004003700'
 REGDB_FILE = 'regdb.bin'
 REGDB_BDF = {
-    0x127c8: 'IPQ5018/QCN6122',
-    0x10f48: 'IPQ5018/QCN6122(old)',
-    0xae2e: 'IPQ6018',
-    0x1978e: 'IPQ8074',
-    0x12df0: 'IPQ9574',
-    0x12dee: 'QCN9074',
+    0x127c6: 'IPQ5018/QCN6122',
+    0x10f46: 'IPQ5018/QCN6122(old)',
+    0xae2c: 'IPQ6018',
+    0x1978c: 'IPQ8074',
+    0x12dee: 'IPQ9574',
+    0x12dec: 'QCN9074'
 }
 
 REGDOMAIN_CODE = '0000'
@@ -83,7 +83,7 @@ def cmd_extract_regdb(args):
         if regdb_addr == -1:
             exit('Unable to find regdb in BDF')
 
-        regdb_size = bdf[regdb_addr - 3] * 0x100
+        regdb_size = unpack('<H', bdf[regdb_addr - 2:regdb_addr])[0]
 
         print(f'Extracting regdb from {REGDB_BDF.get(regdb_addr, "unknown")} BDF')
 
@@ -103,12 +103,12 @@ def cmd_update_regdb(args):
         if regdb_addr == -1:
             exit('Unable to find regdb in BDF')
 
-        regdb_size = bdf[regdb_addr - 3] * 0x100
+        regdb_size = unpack('<H', bdf[regdb_addr - 2:regdb_addr])[0]
 
         with io.open(args.update_regdb[1], 'rb') as r:
             regdb = mmap(r.fileno(), 0, access=ACCESS_COPY)
 
-            if regdb[0:6] != bytes.fromhex(REGDB_HEADER):
+            if regdb[0:8] != bytes.fromhex(REGDB_HEADER):
                 exit('Not valid ath11k regdb file')
 
             if len(regdb) != regdb_size:
