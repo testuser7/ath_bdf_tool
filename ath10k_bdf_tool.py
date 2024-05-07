@@ -36,19 +36,19 @@ CHECKSUM_ADDR = 0x2
 
 BDF_HEADER = '202f'
 
-REGDOMAIN_CODE = '0000'
+REGDOMAIN_CODE = 0x0000
 REGDOMAIN_ADDR = [
     0xc
 ]
 
 
 def calculate_checksum(checksum, data, new_data):
-    result = unpack('>H', checksum)[0]
+    result = unpack('<H', checksum)[0]
 
-    for data_byte in iter_unpack('>H', data + new_data):
+    for data_byte in iter_unpack('<H', data + new_data):
         result = result ^ data_byte[0]
 
-    return(pack('>H', result))
+    return(pack('<H', result))
 
 
 def cmd_remove_regdomain(args):
@@ -59,14 +59,15 @@ def cmd_remove_regdomain(args):
             exit('Not valid ath10k BDF file')
 
         regdomain = bdf[REGDOMAIN_ADDR[0]:REGDOMAIN_ADDR[0] + 2]
-        no_regdomain = bytes.fromhex(REGDOMAIN_CODE)
+        no_regdomain = pack('<H', REGDOMAIN_CODE)
 
         if regdomain != no_regdomain:
             checksum = bdf[CHECKSUM_ADDR:CHECKSUM_ADDR + 2]
-            print(f'Remove regdomain 0x{bytes(reversed(regdomain)).hex()}')
+            print(f'Remove regdomain {format(unpack("<H", regdomain)[0], "#06x")}')
             for addr in REGDOMAIN_ADDR:
-                if bdf[addr:addr + 2] == regdomain:
-                    checksum = calculate_checksum(checksum, bdf[addr:addr + 2], no_regdomain)
+                addr_regdomain = bdf[addr:addr + 2]
+                if addr_regdomain == regdomain:
+                    checksum = calculate_checksum(checksum, addr_regdomain, no_regdomain)
                     bdf[addr:addr + 2] = no_regdomain
 
             bdf[CHECKSUM_ADDR:CHECKSUM_ADDR + 2] = checksum
