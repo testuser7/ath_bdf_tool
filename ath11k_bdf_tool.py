@@ -51,6 +51,10 @@ REGDB_BDF = {
     0x12dee: 'IPQ9574',
     0x12dec: 'QCN9074'
 }
+REGDB_VERSION_ADDR = {
+    0x1c04: 0x17d0,
+    0x2804: 0x2342
+}
 
 REGDOMAIN_CODE = 0x0000
 REGDOMAIN_ADDR = [
@@ -84,8 +88,9 @@ def cmd_extract_regdb(args):
             exit('Unable to find regdb in BDF')
 
         regdb_size = unpack('<H', bdf[regdb_addr - 2:regdb_addr])[0]
+        regdb_version = bdf[regdb_addr + REGDB_VERSION_ADDR.get(regdb_size)]
 
-        print(f'Extracting regdb from {REGDB_BDF.get(regdb_addr, "unknown")} BDF')
+        print(f'Extracting regdb (v{regdb_version}) from {REGDB_BDF.get(regdb_addr, "unknown")} BDF')
 
         with io.open(args.output or REGDB_FILE, 'wb') as r:
             r.write(bdf[regdb_addr:regdb_addr + regdb_size])
@@ -104,6 +109,7 @@ def cmd_update_regdb(args):
             exit('Unable to find regdb in BDF')
 
         regdb_size = unpack('<H', bdf[regdb_addr - 2:regdb_addr])[0]
+        regdb_version = bdf[regdb_addr + REGDB_VERSION_ADDR.get(regdb_size)]
 
         with io.open(args.update_regdb[1], 'rb') as r:
             regdb = mmap(r.fileno(), 0, access=ACCESS_COPY)
@@ -121,13 +127,14 @@ def cmd_update_regdb(args):
                 bdf[regdb_addr:regdb_addr + regdb_size] = regdb
                 bdf_file = bdf.read()
                 bdf.close()
+                regdb_version_update = regdb[REGDB_VERSION_ADDR.get(regdb_size)]
 
-                print(f'Updating regdb in {REGDB_BDF.get(regdb_addr, "unknown")} BDF')
+                print(f'Updating regdb (v{regdb_version} -> v{regdb_version_update}) in {REGDB_BDF.get(regdb_addr, "unknown")} BDF')
 
                 with io.open(args.output or args.update_regdb[0], 'wb') as bdf:
                     bdf.write(bdf_file)
             else:
-                print('Regdb is up to date')
+                print(f'Regdb (v{regdb_version}) is up to date')
 
 
 def cmd_remove_regdomain(args):
