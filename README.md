@@ -38,6 +38,8 @@ options:
                         update regdb in ath11k BDF
   -r BDF, --remove-regdomain BDF
                         remove regdomain from ath11k BDF
+  -p BDF ADDR VAL, --patch-bdf BDF ADDR VAL
+                        patch ath11k BDF
   -o FILE, --output FILE
                         output file name
 ```

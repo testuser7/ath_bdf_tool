@@ -28,6 +28,8 @@ all copies or substantial portions of the Software.
 #                         update regdb in ath11k BDF
 #   -r BDF, --remove-regdomain BDF
 #                         remove regdomain from ath11k BDF
+#   -p BDF ADDR VAL, --patch-bdf BDF ADDR VAL
+#                         patch ath11k BDF
 #   -o FILE, --output FILE
 #                         output file name
 
@@ -36,6 +38,7 @@ from argparse import ArgumentParser
 from hashlib import md5
 from mmap import mmap, ACCESS_COPY
 from struct import pack, unpack, iter_unpack
+from os.path import isfile
 
 CHECKSUM_ADDR = 0xa
 
@@ -166,6 +169,54 @@ def cmd_remove_regdomain(args):
             print('Regdomain is not set')
 
 
+def cmd_patch_bdf(args):
+    with io.open(args.patch_bdf[0], 'rb') as b:
+        bdf = mmap(b.fileno(), 0, access=ACCESS_COPY)
+
+        if bdf[0:6] != bytes.fromhex(BDF_HEADER):
+            exit('Not valid ath11k BDF file')
+
+        if isfile(args.patch_bdf[2]):
+            with io.open(args.patch_bdf[2], 'rb') as f:
+                patch = mmap(f.fileno(), 0, access=ACCESS_COPY)
+            patch_len = int(len(patch))
+        else:
+            patch = bytes.fromhex(args.patch_bdf[2])
+            patch_len = int(len(args.patch_bdf[2])/2)
+
+        patch_addr = int(args.patch_bdf[1], 0)
+        patch_data = bdf[patch_addr:patch_addr + patch_len]
+
+        if patch != patch_data:
+            checksum = bdf[CHECKSUM_ADDR:CHECKSUM_ADDR + 2]
+            if isfile(args.patch_bdf[2]):
+                print(f'Patch {args.patch_bdf[2]}')
+            else:
+                print(f'Patch {bytes(patch_data).hex()}')
+
+            patch_pre = bytes()
+            patch_post = bytes()
+
+            if (patch_addr % 2) != 0:
+                patch_pre = bdf[patch_addr - 1:patch_addr]
+                if (patch_len % 2) == 0:
+                    patch_post = bdf[patch_addr + 1:patch_addr + 2]
+            elif (patch_len % 2) != 0:
+                patch_post = bdf[patch_addr + 1:patch_addr + 2]
+
+            checksum = calculate_checksum(checksum, patch_pre + patch_data + patch_post, patch_pre + patch + patch_post)
+            bdf[patch_addr:patch_addr + patch_len] = patch
+
+            bdf[CHECKSUM_ADDR:CHECKSUM_ADDR + 2] = checksum
+            bdf_file = bdf.read()
+            bdf.close()
+
+            with io.open(args.output or args.patch_bdf[0], 'wb') as bdf:
+                bdf.write(bdf_file)
+        else:
+            print('Patch not needed') 
+
+
 def main():
     parser = ArgumentParser(description='ath11k BDF tool')
 
@@ -176,6 +227,8 @@ def main():
                            help='update regdb in ath11k BDF')
     cmd_group.add_argument('-r', '--remove-regdomain', metavar='BDF',
                            help='remove regdomain from ath11k BDF')
+    cmd_group.add_argument('-p', '--patch-bdf', metavar=('BDF', 'ADDR', 'VAL'), nargs=3,
+                           help='patch ath11k BDF')
 
     parser.add_argument('-o', '--output', metavar='FILE',
                         help='output file name')
@@ -188,6 +241,8 @@ def main():
         return cmd_update_regdb(args)
     elif args.remove_regdomain:
         return cmd_remove_regdomain(args)
+    elif args.patch_bdf:
+        return cmd_patch_bdf(args)
 
 
 if __name__ == '__main__':
